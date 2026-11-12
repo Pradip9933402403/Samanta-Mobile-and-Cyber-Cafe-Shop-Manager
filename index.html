@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Samanta Mobile and Cyber Cafe</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#172033;background:#f3f5f9}*{box-sizing:border-box}
+body{margin:0}.top{background:#142b4a;color:white;padding:20px 16px}.top h2{margin:0 0 6px;font-size:21px}
+.top p{margin:0;color:#d5e2f4;font-size:13px}.wrap{padding:14px;max-width:760px;margin:auto}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat,.panel{background:white;border-radius:13px;padding:14px;box-shadow:0 2px 10px #17203310}
+.stat small{color:#667085}.stat strong{display:block;font-size:22px;margin-top:7px}
+h3{margin:18px 0 10px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+button{border:0;border-radius:9px;padding:11px 13px;background:#1769aa;color:white;font-weight:600}
+button.alt{background:#e7eef7;color:#17324f}.tabs button{flex:1}
+input,select{width:100%;padding:12px;border:1px solid #d5dce7;border-radius:8px;margin:5px 0 10px;font-size:15px}
+label{font-size:13px;color:#475467} .item{border-bottom:1px solid #edf0f4;padding:11px 0;display:flex;justify-content:space-between;gap:8px}
+.item:last-child{border:0}.muted{color:#667085;font-size:12px}.danger{background:#b42318}.good{color:#087443}
+.hidden{display:none}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style></head><body>
+<header class="top"><h2>Samanta Mobile and Cyber Cafe</h2><p>Mobile Repairing Stock Manager · বাংলা + English · Offline</p></header>
+<main class="wrap">
+<div class="stats">
+<div class="stat"><small>Total Products / মোট পার্টস</small><strong id="total">0</strong></div>
+<div class="stat"><small>Stock Value / স্টকের মূল্য</small><strong id="value">₹0</strong></div>
+<div class="stat"><small>Today's Sales / আজকের বিক্রি</small><strong id="sales">₹0</strong></div>
+<div class="stat"><small>Low Stock / কম স্টক</small><strong id="low">0</strong></div>
+</div>
+<div class="tabs">
+<button onclick="show('inventory')">Stock / স্টক</button>
+<button onclick="show('add')">Add Part / পার্টস যোগ</button>
+<button onclick="show('sell')">Sale / বিক্রি</button>
+<button onclick="show('report')">Report / রিপোর্ট</button>
+</div>
+<section id="inventory" class="panel"><h3>Parts Inventory / পার্টসের তালিকা</h3><input id="search" placeholder="Search part name..." oninput="render()"><div id="items"></div></section>
+<section id="add" class="panel hidden"><h3>Add / Update Part</h3>
+<label>Part name / পার্টসের নাম</label><input id="pname" placeholder="যেমন: Samsung A12 Display">
+<div class="row"><div><label>Quantity / পরিমাণ</label><input id="qty" type="number" min="0" placeholder="10"></div><div><label>Low stock limit</label><input id="limit" type="number" min="0" value="2"></div></div>
+<div class="row"><div><label>Buy price / ক্রয়মূল্য</label><input id="buy" type="number" min="0" placeholder="500"></div><div><label>Sell price / বিক্রয়মূল্য</label><input id="price" type="number" min="0" placeholder="700"></div></div>
+<button onclick="addPart()">Save Part / সেভ করুন</button><p class="muted">একই নামের পার্টস আবার যোগ করলে নতুন স্টক হিসেবে যোগ হবে।</p></section>
+<section id="sell" class="panel hidden"><h3>Record Sale / বিক্রি লিখুন</h3><label>Select part / পার্টস বাছুন</label><select id="salePart"></select><label>Quantity sold / বিক্রির পরিমাণ</label><input id="saleQty" type="number" min="1" value="1"><label>Sale price each / প্রতি পিস বিক্রয়মূল্য</label><input id="salePrice" type="number" min="0"><button onclick="sellPart()">Record Sale / বিক্রি সেভ</button></section>
+<section id="report" class="panel hidden"><h3>Sales Report / বিক্রির রিপোর্ট</h3><p id="reportText"></p><button class="alt" onclick="exportData()">Export Backup / ব্যাকআপ ডাউনলোড</button><label style="display:block;margin-top:14px">Restore backup / ব্যাকআপ ফিরিয়ে আনুন</label><input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)"></section>
+</main>
+<script>
+let products=JSON.parse(localStorage.getItem('samanta_products')||'[]');
+let transactions=JSON.parse(localStorage.getItem('samanta_sales')||'[]');
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+function save(){localStorage.setItem('samanta_products',JSON.stringify(products));localStorage.setItem('samanta_sales',JSON.stringify(transactions));render()}
+function show(id){document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(id==='sell')fillSelect();if(id==='report')report()}
+function addPart(){let name=document.getElementById('pname').value.trim(),q=+document.getElementById('qty').value,b=+document.getElementById('buy').value,p=+document.getElementById('price').value,l=+document.getElementById('limit').value;
+if(!name||q<0||b<0||p<0){alert('সব তথ্য সঠিকভাবে দিন / Please enter valid details');return}
+let old=products.find(x=>x.name.toLowerCase()===name.toLowerCase());
+if(old){old.qty+=q;old.buy=b;old.price=p;old.limit=l}else products.push({id:Date.now(),name,qty:q,buy:b,price:p,limit:l});
+['pname','qty','buy','price'].forEach(id=>document.getElementById(id).value='');save();show('inventory')}
+function render(){document.getElementById('total').textContent=products.length;document.getElementById('value').textContent=money(products.reduce((s,x)=>s+x.qty*x.buy,0));
+let today=new Date().toDateString(),ts=transactions.filter(t=>new Date(t.date).toDateString()===today);
+document.getElementById('sales').textContent=money(ts.reduce((s,t)=>s+t.total,0));document.getElementById('low').textContent=products.filter(x=>x.qty<=x.limit).length;
+let term=(document.getElementById('search')?.value||'').toLowerCase();let list=products.filter(x=>x.name.toLowerCase().includes(term));
+document.getElementById('items').innerHTML=list.length?list.map(x=>`<div class="item"><div><b>${esc(x.name)}</b><div class="muted">Buy ${money(x.buy)} · Sell ${money(x.price)}</div><div class="${x.qty<=x.limit?'':'good'}">Stock: ${x.qty} ${x.qty<=x.limit?'· LOW STOCK':''}</div></div><div><button class="alt" onclick="editPart(${x.id})">Edit</button> <button class="danger" onclick="deletePart(${x.id})">×</button></div></div>`).join(''):'<p class="muted">এখনও কোনো পার্টস যোগ করা হয়নি।</p>'}
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function editPart(id){let x=products.find(p=>p.id===id);let n=prompt('Part name',x.name);if(n===null)return;let q=prompt('Quantity',x.qty);if(q===null)return;let b=prompt('Buy price',x.buy);if(b===null)return;let p=prompt('Sell price',x.price);if(p===null)return;x.name=n.trim()||x.name;x.qty=Math.max(0,+q);x.buy=Math.max(0,+b);x.price=Math.max(0,+p);save()}
+function deletePart(id){if(confirm('এই পার্টসটি মুছবেন?')){products=products.filter(x=>x.id!==id);save()}}
+function fillSelect(){let s=document.getElementById('salePart');s.innerHTML=products.map(x=>`<option value="${x.id}">${esc(x.name)} (Stock: ${x.qty})</option>`).join('');let x=products.find(p=>p.id===+(s.value));document.getElementById('salePrice').value=x?x.price:''}
+document.getElementById('salePart').addEventListener('change',()=>{let x=products.find(p=>p.id===+document.getElementById('salePart').value);document.getElementById('salePrice').value=x?x.price:''});
+function sellPart(){let x=products.find(p=>p.id===+document.getElementById('salePart').value),q=+document.getElementById('saleQty').value,price=+document.getElementById('salePrice').value;if(!x||q<1||q>x.qty||price<0){alert('স্টক বা পরিমাণ পরীক্ষা করুন');return}x.qty-=q;transactions.push({date:new Date().toISOString(),name:x.name,qty:q,price,total:q*price,cost:q*x.buy});save();alert('বিক্রি সেভ হয়েছে / Sale recorded');show('inventory')}
+function report(){let total=transactions.reduce((s,t)=>s+t.total,0),profit=transactions.reduce((s,t)=>s+t.total-t.cost,0);document.getElementById('reportText').innerHTML=`মোট বিক্রি / Total sales: <b>${money(total)}</b><br>আনুমানিক লাভ / Gross profit: <b>${money(profit)}</b><br>মোট লেনদেন / Transactions: <b>${transactions.length}</b>`}
+function exportData(){let blob=new Blob([JSON.stringify({products,transactions},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='samanta-stock-backup.json';a.click();URL.revokeObjectURL(a.href)}
+function restoreData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);if(!Array.isArray(d.products)||!Array.isArray(d.transactions))throw 0;products=d.products;transactions=d.transactions;save();alert('Backup restored')}catch(_){alert('Invalid backup file')}};r.readAsText(f)}
+render();
+</script></body></html>
